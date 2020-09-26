@@ -77,8 +77,8 @@ export function reactive(target) {
   return createReactive(target);
 }
 
-export function watchEffect(fn) {
+export function watchEffect(fn, options = { lazy: false }) {
   const effect = createEffect(fn);
-  effect();
+  if (!options.lazy) effect();
   return effect;
 }

@@ -8,6 +8,7 @@
  *
  */
 import { createElm, updateElm } from './create-element';
+import { createVnodeAt } from './vnode';
 
 function isDef(s) {
   return s !== undefined;
@@ -15,6 +16,10 @@ function isDef(s) {
 
 function isUndef(s) {
   return s === undefined;
+}
+
+function isVnode(el) {
+  return el.__vnode__;
 }
 
 function sameVnode(vnode1, vnode2) {
@@ -180,13 +185,17 @@ function patchVnode(oldVnode, vnode) {
 }
 
 export function patch(oldVnode, vnode) {
-  let el, parent;
+  let oEl, parent;
+
+  if (!isVnode(oldVnode)) {
+    oldVnode = createVnodeAt(oldVnode);
+  }
 
   if (sameVnode(oldVnode, vnode)) {
     patchVnode(oldVnode, vnode);
   } else {
     oEl = oldVnode.el;
-    parent = el.parentNode;
+    parent = oEl.parentNode;
 
     const nEl = createElm(vnode); // attach real el to vnode
 
