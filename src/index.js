@@ -1,10 +1,18 @@
-import { watchEffect } from '../reactive/index';
-import { h, patch } from '../vnode/index';
+import { patch } from './vdom';
+import { watchEffect, scopedCx } from './reactive';
+import { renderCx } from './compiler/index';
 
-export function setup(setupFn, options) {
-  let oldVnode, vnode;
+function setupComponent(options) {
+  const { render, data } = options;
+  const state = data(scopedCx);
+  return (cx) => render(cx, state);
+}
+
+function setupRenderer(renderFn) {
+  let vnode, oldVnode;
+
   const updateMount = (el) => () => {
-    vnode = setupFn(h);
+    vnode = renderFn(renderCx);
     patch(
       oldVnode ? oldVnode : el,
       vnode,
@@ -17,8 +25,13 @@ export function setup(setupFn, options) {
         sel = document.querySelector(sel);
       }
       watchEffect(updateMount(sel));
-    }
+      return vnode;
+    },
   };
 }
 
-export * from '../reactive/index';
+export const setup = setupComponent;
+export const render = setupRenderer;
+export * from './vdom';
+export * from './reactive';
+export * from './compiler';

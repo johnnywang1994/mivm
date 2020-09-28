@@ -6,21 +6,22 @@ const effectCache = [];
 const normalHandler = {
   get: (target, key, receiver) => {
     const res = Reflect.get(target, key, receiver);
+    if (res._isRef) return res.value;
     track(target, key);
-    return res;
+    return reactive(res);
   },
   set: (target, key, value, receiver) => {
-    const res = Reflect.set(target, key, value, receiver);
+    const res = Reflect.set(target,key,value,receiver);
     trigger(target, key);
     return res;
-  }
+  },
 };
 
 function isObject(v) {
   return v !== null && typeof v === 'object';
 }
 
-function createReactive(target) {
+function createReactive(target, namespace) {
   if (!isObject(target)) return target;
   let observed = proxyCache.get(target);
   if (observed) return observed;
@@ -48,7 +49,7 @@ function runEffect(effect, fn) {
 }
 
 function track(target, key) {
-  const effect = effectCache[effectCache.length - 1];
+  const effect = effectCache[effectCache.length-1];
   if (effect) {
     let depsMap = trackMap.get(target);
     if (!depsMap) {
@@ -77,8 +78,26 @@ export function reactive(target) {
   return createReactive(target);
 }
 
-export function watchEffect(fn, options = { lazy: false }) {
+export function ref(raw) {
+  raw = isObject(raw) ? reactive(raw) : raw;
+  const v = {
+    _isRef: true,
+    get value() {
+      track(v, '');
+      return raw;
+    },
+    set value(newVal) {
+      raw = newVal;
+      trigger(v, '');
+    }
+  };
+  return v;
+}
+
+export function watchEffect(fn) {
   const effect = createEffect(fn);
-  if (!options.lazy) effect();
+  effect();
   return effect;
 }
+
+export const scopedCx = { reactive, ref, watchEffect };

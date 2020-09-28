@@ -1,19 +1,34 @@
-console.log(Mivm);
-const { setup, reactive } = Mivm;
+import { render, setup } from '../src';
 
-const data = reactive({
-  msg: 'Hello World',
-  test() {
-    console.log(this);
+// const Test = ({ jsx }) => (
+//   <div>
+//     Hello Test
+//   </div>
+// );
+
+const Test = setup({
+  data({ ref }) {
+    const msg = ref('Hello Msg');
+    return { msg };
+  },
+  render({ jsx }, state) {
+    return (
+      <div>
+        {state.msg.value}
+      </div>
+    );
   }
-})
+});
 
-const app = setup((h) => {
-  return h('div', {
-    on: {
-      click: data.test,
-    }
-  }, data.msg);
-})
+console.log(Test);
 
-app.mount('#app');
+const app = window.app = render(({ jsx }) => {
+  return (
+    <div
+      id="app"
+      class="lock"
+    >
+      <Test id="test" />
+    </div>
+  );
+}).mount('#app');
