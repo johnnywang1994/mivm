@@ -1,4 +1,8 @@
 import { h } from '../vdom';
+import hash_sum from 'hash-sum';
+
+// store node index
+let parentIdxStack = [];
 
 function isComponent(vnode) {
   return vnode && typeof vnode.sel === 'function';
@@ -19,8 +23,6 @@ function parseProps(attrs) {
 
 export const renderCx = { h, jsx: compiler };
 
-let parentIndexTmp = [];
-
 export function compiler(tag, attrs) {
   let props = attrs || {};
   let children = [];
@@ -28,8 +30,10 @@ export function compiler(tag, attrs) {
     attrs: {},
     on: {}
   };
-  let isGreatRoot = typeof tag === 'string' && !parentIndexTmp.length;
-  let rootKey = isGreatRoot ? JSON.stringify(props) : undefined;
+  // mount root
+  let isGreatRoot = typeof tag === 'string' && !parentIdxStack.length;
+  // default rootKey
+  let rootKey = isGreatRoot ? hash_sum(JSON.stringify(props)) : undefined;
 
   // handle root
   for (const key in props) {
@@ -44,25 +48,26 @@ export function compiler(tag, attrs) {
     }
   }
 
+  const args = [...arguments].flat();
+  parentIdxStack.push(rootKey);
   // has children
-  // console.log(arguments);
-  parentIndexTmp.push(rootKey);
-  for (let i = 2; i < arguments.length; i++) {
-    let vnode = arguments[i];
+  for (let i = 2; i < args.length; i++) {
+    let vnode = args[i];
     let key = vnode.key || i.toString();
     // set key
     if (vnode.data && vnode.data.attrs.key) {
       key = vnode.key = vnode.data.attrs.key;
     }
-    parentIndexTmp.push(key);
-    // console.log(tag, parentIndexTmp.filter(i => i).join('_'), vnode);
+    parentIdxStack.push(key);
+    // console.log(tag, parentIdxStack.filter(i => i).join('_'), vnode);
 
     // component
     if (isComponent(vnode)) {
       let cx = {...renderCx};
+      let $children = []; // TODO: handle component slot
       let $attrs = {};
       let $on = {};
-      const uniqueKey = parentIndexTmp.filter(i => i).join('_');
+      const uniqueKey = parentIdxStack.filter(i => i).join('_');
       const componentCr = vnode.sel(uniqueKey);
 
       if (vnode.data) {
@@ -79,9 +84,9 @@ export function compiler(tag, attrs) {
     }
 
     children.push(vnode);
-    parentIndexTmp.pop();
+    parentIdxStack.pop();
   }
-  parentIndexTmp.pop();
+  parentIdxStack.pop();
 
   const root = h(tag, options, children);
   root.key = rootKey;
