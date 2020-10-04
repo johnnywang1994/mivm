@@ -1,5 +1,5 @@
-import { h } from '../vdom';
 import hash_sum from 'hash-sum';
+import { h } from '../vdom';
 
 // store node index
 let parentIdxStack = [];
@@ -21,9 +21,11 @@ function parseProps(attrs) {
   return props;
 }
 
-export const renderCx = { h, jsx: compiler };
+export const jsx = compiler;
 
-export function compiler(tag, attrs) {
+export const renderCx = { h, jsx };
+
+function compiler(tag, attrs) {
   let props = attrs || {};
   let children = [];
   let options = {
@@ -33,7 +35,9 @@ export function compiler(tag, attrs) {
   // mount root
   let isGreatRoot = typeof tag === 'string' && !parentIdxStack.length;
   // default rootKey
-  let rootKey = isGreatRoot ? hash_sum(JSON.stringify(props)) : undefined;
+  let rootKey = isGreatRoot
+    ? hash_sum(JSON.stringify(props))
+    : undefined;
 
   // handle root
   for (const key in props) {

@@ -5,7 +5,7 @@ import { renderCx } from './compiler/index';
 function createComponent(options) {
   const { render, data = () => {} } = options;
   const keyMap = new Map();
-  console.log(keyMap);
+  // console.log(keyMap);
   return (key) => (cx) => {
     let state;
     if (keyMap.has(key)) {
