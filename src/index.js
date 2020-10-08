@@ -1,6 +1,6 @@
 import { patch } from './vdom';
 import { watchEffect, scopedCx } from './reactive';
-import { renderCx } from './compiler/index';
+import { renderCx, compileTemplate } from './compiler';
 
 function createComponent(options) {
   const { render, data = () => {} } = options;
@@ -13,7 +13,7 @@ function createComponent(options) {
     } else {
       keyMap.set(key, state = data(scopedCx));
     }
-    const vnode = render(cx, state);
+    const vnode = compileTemplate(render(cx, state));
     return vnode;
   };
 }
@@ -22,7 +22,7 @@ function createRenderer(renderFn) {
   let vnode, oldVnode, state;
 
   const updateMount = (el) => () => {
-    vnode = renderFn(renderCx, state);
+    vnode = compileTemplate(renderFn(renderCx, state));
     patch(
       oldVnode ? oldVnode : el,
       vnode,
