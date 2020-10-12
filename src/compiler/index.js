@@ -1,98 +1,113 @@
-import hash_sum from 'hash-sum';
-import { h } from '../vdom';
+import { htmlTokenize } from './tokenizer';
+import { compiler } from './compiler';
 
-// store node index
-let parentIdxStack = [];
-
-function isComponent(vnode) {
-  return vnode && typeof vnode.sel === 'function';
-}
-
-function parseProps(attrs) {
-  const props = Object.create(null);
-  for (let key in attrs) {
-    if (key.startsWith('p_')) {
-      props[key.slice(2)] = attrs[key];
-      delete attrs[key];
-    } else if (key === 'key') {
-      delete attrs[key];
-    }
-  }
-  return props;
-}
-
-export const jsx = compiler;
-
-export const renderCx = { h, jsx };
-
-function compiler(tag, attrs) {
-  let props = attrs || {};
-  let children = [];
-  let options = {
-    attrs: {},
-    on: {}
+function createNode(token) {
+  const node = {
+    tagName: token.tagName,
+    nodeType: token.nodeType,
+    children: [],
+    data: token.attrs,
+    parent: undefined,
+    text: token.type === 'Value'
+      ? token.value
+      : undefined,
   };
-  // mount root
-  let isGreatRoot = typeof tag === 'string' && !parentIdxStack.length;
-  // default rootKey
-  let rootKey = isGreatRoot
-    ? hash_sum(JSON.stringify(props))
-    : undefined;
-
-  // handle root
-  for (const key in props) {
-    // event
-    if (key.startsWith('on')) {
-      options.on[key.slice(2).toLowerCase()] = props[key];
-    } else if (key === 'key') {
-      rootKey = props[key];
-    } else {
-      // normal
-      options.attrs[key] = props[key];
-    }
-  }
-
-  const args = [...arguments].flat();
-  parentIdxStack.push(rootKey);
-  // has children
-  for (let i = 2; i < args.length; i++) {
-    let vnode = args[i];
-    let key = vnode.key || i.toString();
-    // set key
-    if (vnode.data && vnode.data.attrs.key) {
-      key = vnode.key = vnode.data.attrs.key;
-    }
-    parentIdxStack.push(key);
-    // console.log(tag, parentIdxStack.filter(i => i).join('_'), vnode);
-
-    // component
-    if (isComponent(vnode)) {
-      let cx = {...renderCx};
-      let $children = []; // TODO: handle component slot
-      let $attrs = {};
-      let $on = {};
-      const uniqueKey = parentIdxStack.filter(i => i).join('_');
-      const componentCr = vnode.sel(uniqueKey);
-
-      if (vnode.data) {
-        $attrs = vnode.data.attrs;
-        $on = vnode.data.on;
-        // inject props
-        cx.props = parseProps($attrs);
-      }
-      vnode = componentCr(cx);
-      vnode.key = key;
-      // handle attrs
-      vnode.data.attrs = {...vnode.data.attrs, ...$attrs};
-      vnode.data.on = {...vnode.data.on, ...$on};
-    }
-
-    children.push(vnode);
-    parentIdxStack.pop();
-  }
-  parentIdxStack.pop();
-
-  const root = h(tag, options, children);
-  root.key = rootKey;
-  return root;
+  return node;
 }
+
+const selfClosedTags = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'];
+function isSelfClosedTags(tag) {
+  return selfClosedTags.indexOf(tag) > -1;
+}
+
+function createParser(tokens) {
+  const tokenStack = [];
+  const nodeStack = [];
+  let root, nodeHEAD;
+
+  const parseTag = function(token, i, node) {
+    if (i === 0) {
+      root = node;
+      nodeHEAD = root;
+    } else {
+      const topNode = nodeStack[nodeStack.length-1];
+      if (topNode !== nodeHEAD) {
+        nodeStack.push(nodeHEAD);
+      }
+      if (token.type !== 'TagClose') {
+        nodeHEAD.children.push(node);
+      }
+    }
+  };
+
+  const parseHtml = function() {
+    for (let i=0;i<tokens.length;i++) {
+      const token = tokens[i];
+      const node = createNode(token);
+      const isElement = token.nodeType === 1;
+      const isOpenTag = token.type === 'TagOpen';
+      parseTag(token, i, node);
+      // elements
+      if (isElement) {
+        // handle self closed tags
+        if (isSelfClosedTags(token.tagName)) {
+          continue;
+        }
+        // handle open or close/text
+        if (isOpenTag) {
+          nodeHEAD = node;
+          tokenStack.push(token);
+        } else {
+          const topToken = tokenStack[tokenStack.length-1];
+          if (topToken.tagName !== token.tagName) throw 'SyntaxError';
+          nodeStack.pop();
+          nodeHEAD = nodeStack[nodeStack.length-1];
+          tokenStack.pop();
+        }
+      }
+    }
+    if (tokenStack.length > 0) throw 'SyntaxError';
+    // console.log('Parse complete');
+    return root;
+  };
+
+  return {
+    parseTag,
+    parseHtml,
+  };
+}
+
+function parseHtmlTokens(inputTokens) {
+  const { parseHtml } = createParser(inputTokens);
+  return parseHtml();
+}
+
+function compileNode(node, deps, components) {
+  if (typeof node !== 'object') return;
+  if (node.children.length) {
+    for (let i=0;i<node.children.length;i++) {
+      const child = node.children[i];
+      node.children[i] = child.text ||
+        compileNode(child, deps, components);
+    }
+  }
+  const tag = (components && node.tagName in components)
+    ? components[node.tagName]
+    : node.tagName;
+  return compiler(
+    tag,
+    node.data,
+    deps,
+    components,
+    ...node.children
+  );
+}
+
+export function compileTemplate(result) {
+  const { template, deps, components } = result;
+  const tokens = htmlTokenize(template);
+  const nodes = parseHtmlTokens(tokens);
+  return compileNode(nodes, deps, components);
+}
+
+export * from './compiler';
