@@ -1,4 +1,4 @@
-import { renderApp, setup } from '../src';
+import { renderApp, setup } from '../dist/mivm';
 
 const Test = setup({
   data({ ref }) {

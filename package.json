@@ -1,7 +1,7 @@
 {
   "name": "mivm",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "./dist/mivm.js",
   "license": "MIT",
   "scripts": {
     "test": "parcel ./test/index.html",
