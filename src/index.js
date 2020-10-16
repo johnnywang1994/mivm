@@ -9,7 +9,7 @@ function renderToVnode(render, state, components) {
 }
 
 function createComponent(options) {
-  const { render, data = () => {} } = options;
+  const { render, data = () => {}, components } = options;
   const keyMap = new Map();
   // console.log(keyMap);
   return (key) => {
@@ -22,7 +22,7 @@ function createComponent(options) {
       } else {
         keyMap.set(key, state = data(scopedCx) || {});
       }
-      const vnode = renderToVnode(render, state);
+      const vnode = renderToVnode(render, state, components);
       return vnode;
     };
   };

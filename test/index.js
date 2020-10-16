@@ -1,6 +1,13 @@
-import { renderApp, setup } from '../dist/mivm';
+import { renderApp, setup } from '../src';
 
-const Test = setup({
+const Test = setup(({ html }) => html`
+  <div class="test">Hello Test2</div>
+`);
+
+const Test2 = setup({
+  components: {
+    Test
+  },
   data({ ref }) {
     const inputText = ref('');
     const inputHandler = function(e) {
@@ -11,22 +18,18 @@ const Test = setup({
   render({ html }, state) {
     const { inputText, inputHandler } = state;
     return html`
-      <div class="test">
+      <div class="test2">
         This is Test: ${inputText.value}
         <input value="${inputText.value}" @input="${inputHandler}" />
+        <Test></Test>
       </div>
     `;
   }
 });
 
-const Test2 = setup(({ html }) => html`
-  <div class="test2">Hello Test2</div>
-`);
-
 const app = renderApp({
   components: {
-    Test,
-    Test2
+    Test2,
   },
   data({ ref }) {
     const count = ref(0);
