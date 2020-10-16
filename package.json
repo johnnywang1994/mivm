@@ -1,6 +1,6 @@
 {
   "name": "mivm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "./dist/mivm.js",
   "license": "MIT",
   "scripts": {
